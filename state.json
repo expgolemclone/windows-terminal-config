@@ -25,7 +25,7 @@
 			"initialPosition" : "-1072,25",
 			"initialSize" : 
 			{
-				"height" : 1816,
+				"height" : 880,
 				"width" : 1064
 			},
 			"launchMode" : "default",
@@ -33,11 +33,11 @@
 			[
 				{
 					"action" : "newTab",
-					"commandline" : "pwsh.exe",
+					"commandline" : "%SystemRoot%\\System32\\cmd.exe",
 					"profile" : "{3ad42e7b-e073-5f3e-ac57-1c259ffa86a8}",
 					"startingDirectory" : null,
 					"suppressApplicationTitle" : false,
-					"tabTitle" : "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+					"tabTitle" : "Default"
 				}
 			]
 		},
@@ -45,7 +45,7 @@
 			"initialPosition" : "-2152,205",
 			"initialSize" : 
 			{
-				"height" : 1816,
+				"height" : 880,
 				"width" : 1064
 			},
 			"launchMode" : "default",
@@ -53,14 +53,34 @@
 			[
 				{
 					"action" : "newTab",
-					"commandline" : "pwsh.exe",
+					"commandline" : "%SystemRoot%\\System32\\cmd.exe",
 					"profile" : "{3ad42e7b-e073-5f3e-ac57-1c259ffa86a8}",
 					"startingDirectory" : null,
 					"suppressApplicationTitle" : false,
-					"tabTitle" : "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+					"tabTitle" : "Default"
+				}
+			]
+		},
+		{
+			"initialPosition" : "-1072,961",
+			"initialSize" : 
+			{
+				"height" : 880,
+				"width" : 1064
+			},
+			"launchMode" : "default",
+			"tabLayout" : 
+			[
+				{
+					"action" : "newTab",
+					"commandline" : "\"C:\\Program Files\\PowerShell\\7\\pwsh.exe\"",
+					"profile" : "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+					"startingDirectory" : "C:\\Users\\0000250059",
+					"suppressApplicationTitle" : false,
+					"tabTitle" : "PowerShell"
 				}
 			]
 		}
 	],
-	"settingsHash" : "30b2aabbcc16292f-01dcc7e2170bcec0"
+	"settingsHash" : "a0102b919c2ed601-01dcd3bcf1be3324"
 }
