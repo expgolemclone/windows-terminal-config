@@ -29,9 +29,14 @@
             "type": "remainingProfiles"
         }
     ],
+    "theme": "light",
     "profiles": 
     {
-        "defaults": {},
+        "defaults": 
+        {
+            "colorScheme": "Soft Daylight",
+            "useAcrylic": false
+        },
         "list": 
         [
             {
@@ -73,7 +78,32 @@
             }
         ]
     },
-    "schemes": [],
+    "schemes": 
+    [
+        {
+            "name": "Soft Daylight",
+            "background": "#FFF8F0",
+            "foreground": "#5B5247",
+            "black": "#8B8176",
+            "blue": "#6C8CD5",
+            "brightBlack": "#A59B90",
+            "brightBlue": "#8FAAE5",
+            "brightCyan": "#9FD2D7",
+            "brightGreen": "#A4C893",
+            "brightPurple": "#C8A5E6",
+            "brightRed": "#E59A8A",
+            "brightWhite": "#FFFDFC",
+            "brightYellow": "#E6C97E",
+            "cursorColor": "#D97A66",
+            "cyan": "#7DBBC3",
+            "green": "#88B57B",
+            "purple": "#B38AD9",
+            "red": "#D97A66",
+            "selectionBackground": "#DDECF8",
+            "white": "#F6EEE4",
+            "yellow": "#D9B35F"
+        }
+    ],
     "themes": [],
     "windowingBehavior": "useNew"
 }
