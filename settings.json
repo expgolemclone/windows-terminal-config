@@ -34,7 +34,7 @@
     {
         "defaults": 
         {
-            "colorScheme": "Soft Daylight",
+            "colorScheme": "Soft Night",
             "useAcrylic": false
         },
         "list": 
@@ -81,27 +81,27 @@
     "schemes": 
     [
         {
-            "name": "Soft Daylight",
-            "background": "#FFF8F0",
-            "foreground": "#5B5247",
-            "black": "#8B8176",
-            "blue": "#6C8CD5",
-            "brightBlack": "#A59B90",
-            "brightBlue": "#8FAAE5",
-            "brightCyan": "#9FD2D7",
-            "brightGreen": "#A4C893",
-            "brightPurple": "#C8A5E6",
-            "brightRed": "#E59A8A",
-            "brightWhite": "#FFFDFC",
-            "brightYellow": "#E6C97E",
-            "cursorColor": "#D97A66",
-            "cyan": "#7DBBC3",
-            "green": "#88B57B",
-            "purple": "#B38AD9",
-            "red": "#D97A66",
-            "selectionBackground": "#DDECF8",
-            "white": "#F6EEE4",
-            "yellow": "#D9B35F"
+            "name": "Soft Night",
+            "background": "#202631",
+            "foreground": "#F5EEE6",
+            "black": "#6E6A68",
+            "blue": "#8FB7FF",
+            "brightBlack": "#9B958F",
+            "brightBlue": "#B6CCFF",
+            "brightCyan": "#AEE4E8",
+            "brightGreen": "#C4E5A4",
+            "brightPurple": "#D7B8FF",
+            "brightRed": "#FFB0A0",
+            "brightWhite": "#FFF9F3",
+            "brightYellow": "#F3DB96",
+            "cursorColor": "#FFC1A6",
+            "cyan": "#8DD3DA",
+            "green": "#A8D68A",
+            "purple": "#C7A1F3",
+            "red": "#F09A8E",
+            "selectionBackground": "#3E4B61",
+            "white": "#E7DDD2",
+            "yellow": "#E8C776"
         }
     ],
     "themes": [],
