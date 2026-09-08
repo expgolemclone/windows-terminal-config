@@ -6,6 +6,8 @@ Windows Terminal stable版の`settings.json`を管理するrepositoryです.
 
 `state.json`, `elevated-state.json`, `buffer_*.txt`はWindows Terminalが生成するruntime状態であり, version管理しません.
 
+既定のshellはPowerShell 7 (`pwsh`)です. Windows PowerShell, Command Prompt, Visual Studioの旧shell profilesはmenuに表示しません.
+
 `firstWindowPreference`は`defaultProfile`に固定し, 過去のwindow layoutを復元しません. 設定を検証するには次を実行します.
 
 ```powershell
