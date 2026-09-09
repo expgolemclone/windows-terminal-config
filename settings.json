@@ -1,7 +1,26 @@
 {
     "$help": "https://aka.ms/terminal-documentation",
     "$schema": "https://aka.ms/terminal-profiles-schema",
-    "actions": [],
+    "actions": 
+    [
+        {
+            "command": 
+            {
+                "action": "multipleActions",
+                "actions": 
+                [
+                    "duplicateTab",
+                    {
+                        "action": "moveTab",
+                        "direction": "forward",
+                        "window": "new"
+                    }
+                ]
+            },
+            "id": "User.DuplicateTabToNewWindow",
+            "name": "Duplicate tab to new window"
+        }
+    ],
     "copyFormatting": "none",
     "copyOnSelect": false,
     "defaultInputScope": "alphanumericHalfWidth",
@@ -18,7 +37,7 @@
             "keys": "ctrl+shift+v"
         },
         {
-            "id": "Terminal.DuplicatePaneAuto",
+            "id": "User.DuplicateTabToNewWindow",
             "keys": "ctrl+shift+n"
         }
     ],
