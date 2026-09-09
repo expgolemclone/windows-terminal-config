@@ -8,7 +8,7 @@ Windows Terminal stable版の`settings.json`を管理するrepositoryです.
 
 既定のshellはPowerShell 7 (`pwsh`)です. Windows PowerShell, Command Prompt, Visual Studioの旧shell profilesはmenuに表示しません.
 
-`Ctrl+Shift+N`は現在tabを複製し, その複製を新しいwindowへ移します. PowerShell profileがWindows Terminalへ現在directoryを通知するため, 新しいwindowも同じdirectoryで開きます.
+`Ctrl+Shift+N`はWindows Terminal側では標準の`Terminal.OpenNewWindow`に固定します. 同じdirectoryを維持する挙動はAutoHotkey側でWindows Terminalがactiveな場合だけ処理し, Terminalのtab tear-off (`duplicateTab` + `moveTab`) は使用しません.
 
 `firstWindowPreference`は`defaultProfile`に固定し, 過去のwindow layoutを復元しません. 設定を検証するには次を実行します.
 
