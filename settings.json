@@ -18,6 +18,14 @@
             "keys": "ctrl+shift+v"
         },
         {
+            "id": "unbound",
+            "keys": "ctrl+c"
+        },
+        {
+            "id": "unbound",
+            "keys": "ctrl+v"
+        },
+        {
             "id": "Terminal.OpenNewWindow",
             "keys": "ctrl+shift+n"
         }
