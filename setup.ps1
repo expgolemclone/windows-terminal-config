@@ -1,5 +1,7 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
-param()
+param(
+    [switch]$WaitForTerminalExit
+)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -19,6 +21,12 @@ if (-not (Test-Path -LiteralPath $packageRoot -PathType Container)) {
 }
 if ($repositoryRoot.StartsWith($localState + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'The repository cannot be inside the LocalState directory.'
+}
+
+if ($WaitForTerminalExit -and -not $WhatIfPreference) {
+    while (@(Get-Process -Name WindowsTerminal, OpenConsole -ErrorAction SilentlyContinue).Count -ne 0) {
+        Start-Sleep -Seconds 2
+    }
 }
 
 $existingItem = Get-Item -LiteralPath $localState -Force -ErrorAction SilentlyContinue

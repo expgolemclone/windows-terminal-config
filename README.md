@@ -4,7 +4,7 @@ Windows Terminal stable版の`settings.json`を管理するrepositoryです.
 
 Windows Terminalが使用する`%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState`から, このrepositoryへのdirectory junctionを作ります. repository内の`settings.json`がLive設定の単一の正本です.
 
-Windows Terminalをすべて閉じ, 独立したPowerShellまたはConsole Hostで次を実行します.
+Windows Terminalをすべて閉じ, 独立したPowerShellまたはConsole Hostで次を実行します. `-WaitForTerminalExit`を付けると, すべてのTerminalが終了するまで待ってから接続します.
 
 ```powershell
 pwsh -NoProfile -File .\setup.ps1
