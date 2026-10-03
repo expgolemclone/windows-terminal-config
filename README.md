@@ -1,27 +1,35 @@
 # Windows Terminal configuration
 
-Windows Terminal stable版の`settings.json`を管理するrepositoryです.
+Windows Terminal stable版の設定を管理します. `settings.json`が単一の正本です. cloneだけでは適用されません.
 
-Windows Terminalが使用する`%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState`から, このrepositoryへのdirectory junctionを作ります. repository内の`settings.json`がLive設定の単一の正本です.
+## Apply
 
-Windows Terminalをすべて閉じ, 独立したPowerShellまたはConsole Hostで次を実行します. `-WaitForTerminalExit`を付けると, すべてのTerminalが終了するまで待ってから接続します.
+全Windows Terminalを閉じ, Terminal外のPowerShell 7から実行します. processの強制終了はしません.
 
 ```powershell
 pwsh -NoProfile -File .\setup.ps1
+pwsh -NoProfile -File .\verify.ps1
 ```
 
-既存の`LocalState`は同じpackage directoryの`LocalState.backup-*`に保存され, `state.json`などのruntime状態はrepositoryへコピーされます. 正しいjunctionが既にあれば何もしません.
+`setup.ps1 -WaitForTerminalExit`は変更が必要な場合だけ終了を待ちます. 正しく接続済みなら, 起動中でも検証してno-opで終了します. `-WhatIf`は変更しません.
 
-`state.json`, `elevated-state.json`, `buffer_*.txt`はWindows Terminalが生成するruntime状態であり, version管理しません.
+`%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState`をrepositoryへのjunctionにします. 既存directoryは同じpackage内の`LocalState.backup-*`へ保存します. runtime状態は引き継ぎ, version管理しません. 他のjunctionやruntime fileの衝突は上書きせず停止します. 接続・検証失敗時は元の状態へ復元します.
 
-既定のshellはPowerShell 7 (`pwsh`)です. Windows PowerShell, Command Prompt, Visual Studioの旧shell profilesはmenuに表示しません.
+## Responsibilities
 
-`Ctrl+Shift+N`はWindows Terminal側では標準の`Terminal.OpenNewWindow`に固定します. 同じdirectoryを維持する挙動はAutoHotkey側でWindows Terminalがactiveな場合だけ処理し, Terminalのtab tear-off (`duplicateTab` + `moveTab`) は使用しません.
+- Windowsの既定ターミナルはOS設定です. このrepositoryからregistryを変更しません.
+- 既定shellはPowerShell 7のdynamic profileです. 通常起動は非昇格です.
+- AHKは新規windowと開始directoryを指定し, shellを指定しません. 管理者起動は既存の昇格workerから行います.
+- `Ctrl+Shift+C/V`がコピー・貼り付けです. `Ctrl+C/V`のTerminal割り当ては解除します.
+- `Ctrl+Shift+N`は`Terminal.OpenNewWindow`です. 現directoryの引き継ぎはAHKが扱います. tab tear-offは使いません.
+- 過去のwindow layoutは復元せず, 既定profileで新規windowを開きます.
 
-`Ctrl+Shift+C/V`をコピーと貼り付けに使い, `Ctrl+C/V`のTerminal側のコピペ割り当てを解除します. 通常起動と同じアカウントの管理者起動に適用されます. PowerShell 7のprofile側では`Ctrl+C`を入力行のキャンセルに割り当て, `Ctrl+V`を解除します.
-
-`firstWindowPreference`は`defaultProfile`に固定し, 過去のwindow layoutを復元しません. 設定を検証するには次を実行します.
+## Verification
 
 ```powershell
 pwsh -NoProfile -File .\tests\test-settings.ps1
+pwsh -NoProfile -File .\tests\test-setup.ps1
+pwsh -NoProfile -File .\verify.ps1
 ```
+
+前2つはsourceと一時directoryでの回帰テストです. `verify.ps1`だけが実環境のjunctionと設定を確認し, 未接続なら失敗します. 新規windowのPowerShell version, directory, 通常・管理者tokenとPiの通知音は別途実動作で確認します.
