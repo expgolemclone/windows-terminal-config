@@ -14,12 +14,12 @@
             "keys": "ctrl+shift+c"
         },
         {
-            "id": "Terminal.PasteFromClipboard",
-            "keys": "ctrl+shift+v"
-        },
-        {
             "id": "unbound",
             "keys": "ctrl+c"
+        },
+        {
+            "id": "Terminal.PasteFromClipboard",
+            "keys": "ctrl+shift+v"
         },
         {
             "id": "unbound",
@@ -94,6 +94,12 @@
                 "hidden": true,
                 "name": "Developer PowerShell for VS 2022",
                 "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{61c5364e-e1cb-5a35-af75-139d99158293}",
+                "hidden": false,
+                "name": "Ubuntu-24.04",
+                "source": "Microsoft.WSL"
             }
         ]
     },
