@@ -1,8 +1,8 @@
 #requires -Version 7.0
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-Import-Module (Join-Path $repositoryRoot 'TerminalConfiguration.psm1') -Force
-$settingsPath = Join-Path $repositoryRoot 'settings.json'
+Import-Module (Join-Path $repositoryRoot 'src/terminal-configuration.psm1') -Force
+$settingsPath = Join-Path $repositoryRoot 'config/settings.json'
 Assert-TerminalSettings -SettingsPath $settingsPath
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json -AsHashtable -Depth 100
 $schemes = @($settings.schemes | Where-Object name -eq $settings.profiles.defaults.colorScheme)

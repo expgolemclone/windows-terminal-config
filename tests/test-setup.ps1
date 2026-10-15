@@ -2,8 +2,8 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$modulePath = Join-Path $repositoryRoot 'TerminalConfiguration.psm1'
-$testRoot = 'C:/dev/tmp/windows-terminal-config-setup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+$modulePath = Join-Path $repositoryRoot 'src/terminal-configuration.psm1'
+$testRoot = Join-Path ([IO.Path]::GetTempPath()) ('terminal-setup-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 
 function Assert($Condition, [string]$Message) {
@@ -17,15 +17,17 @@ function Assert-Throws([scriptblock]$Action, [string]$MessagePattern) {
 }
 function New-Fixture([string]$Name) {
     Import-Module $modulePath -Force
-    $module = Get-Module TerminalConfiguration
+    $module = Get-Module terminal-configuration
     # Hermetic process mock; product code still checks the real process list.
     & $module { function script:Get-TerminalProcesses { return @() } }
     $root = Join-Path $testRoot $Name
-    $repo = Join-Path $root 'repository'
+    $repository = Join-Path $root 'repository'
+    $configuration = Join-Path $repository 'config'
     $package = Join-Path $root 'package'
-    New-Item -ItemType Directory -Path $repo, $package | Out-Null
-    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'settings.json') -Destination $repo
-    return @{ Repo = $repo; Local = Join-Path $package 'LocalState'; Package = $package; Module = $module }
+    New-Item -ItemType Directory -Path $configuration, $package | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config/settings.json') -Destination $configuration
+    Set-Content -LiteralPath (Join-Path $repository 'setup.ps1') -Value '# repository tooling'
+    return @{ Repository = $repository; Configuration = $configuration; Local = Join-Path $package 'LocalState'; Package = $package; Module = $module }
 }
 function New-LiveDirectory($Fixture) {
     New-Item -ItemType Directory -Path $Fixture.Local | Out-Null
@@ -39,8 +41,7 @@ function New-LiveDirectory($Fixture) {
     foreach ($name in $Fixture.RuntimeContents.Keys) {
         $path = Join-Path $Fixture.Local $name
         Set-Content -LiteralPath $path -Value $Fixture.RuntimeContents[$name]
-        # A protected DACL makes a copy's inherited security visibly different,
-        # even when tests run unelevated and cannot assign Administrators ownership.
+        # A protected DACL makes inherited security changes visible without elevation.
         $acl = Get-Acl -LiteralPath $path
         $acl.SetAccessRuleProtection($true, $true)
         Set-Acl -LiteralPath $path -AclObject $acl
@@ -55,11 +56,11 @@ function Assert-RuntimeState($Fixture, [string]$Directory) {
     }
 }
 function Connect($Fixture) {
-    return Connect-TerminalConfiguration -RepositoryRoot $Fixture.Repo -LocalState $Fixture.Local
+    return Connect-TerminalConfiguration -ConfigurationDirectory $Fixture.Configuration -LocalState $Fixture.Local
 }
 try {
     Import-Module $modulePath -Force
-    $module = Get-Module TerminalConfiguration
+    $module = Get-Module terminal-configuration
     & $module {
         function script:Get-Process {
             param($Name, $ErrorAction)
@@ -71,22 +72,29 @@ try {
         if (@(Get-TerminalProcesses).Count -ne 1) { throw 'Terminal frontend was not detected.' }
     }
     Write-Host 'Shutdown guard targets the configuration-owning frontend: OK'
+
     $f = New-Fixture 'regular directory'
     New-LiveDirectory $f
-    Assert-Throws { Assert-TerminalInstallation $f.Repo $f.Local } 'not connected'
+    Assert-Throws { Assert-TerminalInstallation $f.Configuration $f.Local } 'not connected'
     $result = Connect $f
     Assert $result.Changed 'Expected a connection change.'
+    Assert ($result.ConfigurationDirectory -eq $f.Configuration) 'Setup returned the wrong configuration directory.'
+    Assert ((Get-Item -LiteralPath $f.Local).Target -eq $f.Configuration) 'LocalState must target config, not the repository root.'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $f.Local 'setup.ps1'))) 'Repository tooling is exposed through LocalState.'
     Assert (Test-Path -LiteralPath (Join-Path $result.BackupPath 'settings.json')) 'Original settings were not backed up.'
-    Assert-RuntimeState $f $f.Repo
+    Assert-RuntimeState $f $f.Configuration
     foreach ($name in $f.RuntimeContents.Keys) {
         Assert (-not (Test-Path -LiteralPath (Join-Path $result.BackupPath $name))) "Runtime file was copied instead of moved: $name"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $f.Repository $name))) "Runtime file leaked into the repository root: $name"
     }
-    Assert-TerminalInstallation $f.Repo $f.Local
+    Set-Content -LiteralPath (Join-Path $f.Local 'buffer_2.txt') -Value 'new runtime buffer'
+    Assert (Test-Path -LiteralPath (Join-Path $f.Configuration 'buffer_2.txt')) 'New runtime state must stay in config.'
+    Assert-TerminalInstallation $f.Configuration $f.Local
     & $f.Module { function script:Get-TerminalProcesses { throw 'No-op must not inspect running processes.' } }
-    $repeat = Connect-TerminalConfiguration $f.Repo $f.Local -WaitForTerminalExit
+    $repeat = Connect-TerminalConfiguration $f.Configuration $f.Local -WaitForTerminalExit
     Assert (-not $repeat.Changed) 'Second setup must be a no-op.'
     Assert (@(Get-ChildItem -LiteralPath $f.Package -Directory -Filter 'LocalState.backup-*').Count -eq 1) 'No-op made another backup.'
-    Write-Host 'Backup, runtime owner/ACL preservation, live validation and running-Terminal no-op: OK'
+    Write-Host 'Config isolation, runtime owner/ACL preservation, validation and running-Terminal no-op: OK'
 
     $f = New-Fixture 'missing LocalState'
     $result = Connect $f
@@ -95,7 +103,7 @@ try {
 
     $f = New-Fixture 'preview'
     New-LiveDirectory $f
-    Connect-TerminalConfiguration $f.Repo $f.Local -WhatIf
+    Connect-TerminalConfiguration $f.Configuration $f.Local -WhatIf
     Assert ((Get-Item -LiteralPath $f.Local).LinkType -ne 'Junction') 'Preview changed LocalState.'
     Assert (@(Get-ChildItem -LiteralPath $f.Package -Directory -Filter 'LocalState.backup-*').Count -eq 0) 'Preview created backup.'
     Write-Host 'Preview is read-only: OK'
@@ -107,30 +115,25 @@ try {
     Assert ((Get-Item -LiteralPath $f.Local).LinkType -ne 'Junction') 'Running-Terminal refusal changed LocalState.'
     Write-Host 'Running Terminal blocks mutation: OK'
 
-    $f = New-Fixture 'other junction'
-    $other = Join-Path $f.Package 'other'
-    New-Item -ItemType Directory -Path $other | Out-Null
-    New-Item -ItemType Junction -Path $f.Local -Target $other | Out-Null
-    Assert-Throws { Connect $f } 'not a regular directory'
-    Assert-Throws { Assert-TerminalInstallation $f.Repo $f.Local } 'not connected'
-    Remove-Item -LiteralPath $f.Local -Force
-    Write-Host 'Foreign junction is neither accepted nor replaced: OK'
-
-    $f = New-Fixture 'broken junction'
-    $other = Join-Path $f.Package 'other'
-    New-Item -ItemType Directory -Path $other | Out-Null
-    New-Item -ItemType Junction -Path $f.Local -Target $other | Out-Null
-    Remove-Item -LiteralPath $other
-    Assert-Throws { Assert-TerminalInstallation $f.Repo $f.Local } 'not connected'
-    Assert-Throws { Connect $f } 'not a regular directory'
-    Remove-Item -LiteralPath $f.Local -Force
-    Write-Host 'Broken junction is rejected: OK'
+    foreach ($target in @('other junction', 'repository root junction', 'broken junction')) {
+        $f = New-Fixture $target
+        $other = if ($target -eq 'repository root junction') { $f.Repository } else { Join-Path $f.Package 'other' }
+        if (-not (Test-Path -LiteralPath $other)) { New-Item -ItemType Directory -Path $other | Out-Null }
+        New-Item -ItemType Junction -Path $f.Local -Target $other | Out-Null
+        if ($target -eq 'broken junction') { Remove-Item -LiteralPath $other }
+        Assert-Throws { Assert-TerminalInstallation $f.Configuration $f.Local } 'not connected'
+        Assert-Throws { Connect $f } 'not a regular directory'
+        Assert ((Get-Item -LiteralPath $f.Local).Target -eq $other) 'Rejected junction was changed.'
+        Remove-Item -LiteralPath $f.Local -Force
+        Assert (Test-Path -LiteralPath (Join-Path $f.Repository 'setup.ps1')) 'Repository tooling was removed.'
+        Write-Host "Rejected without replacement: $target"
+    }
 
     $f = New-Fixture 'runtime collision'
     New-LiveDirectory $f
-    Set-Content -LiteralPath (Join-Path $f.Repo 'state.json') -Value 'existing-state'
+    Set-Content -LiteralPath (Join-Path $f.Configuration 'state.json') -Value 'existing-state'
     Assert-Throws { Connect $f } 'Runtime state already exists'
-    Assert ((Get-Content -LiteralPath (Join-Path $f.Repo 'state.json') -Raw).Trim() -eq 'existing-state') 'Collision destroyed existing state.'
+    Assert ((Get-Content -LiteralPath (Join-Path $f.Configuration 'state.json') -Raw).Trim() -eq 'existing-state') 'Collision destroyed existing state.'
     Write-Host 'Runtime collision preserves existing files: OK'
 
     foreach ($fault in @('partial migration', 'destination race', 'creation', 'verification')) {
@@ -138,14 +141,14 @@ try {
         New-LiveDirectory $f
         if ($fault -in @('partial migration', 'destination race')) {
             & $f.Module {
-                param($Fault, $Repository)
+                param($Fault, $Configuration)
                 $script:originalMove = ${function:Move-TerminalRuntimeFile}
                 $script:moveFault = $Fault
-                $script:moveRepository = $Repository
+                $script:moveConfiguration = $Configuration
                 $script:forwardMoves = 0
                 $script:raceDestination = $null
                 function script:Move-TerminalRuntimeFile([string]$Source, [string]$Destination) {
-                    if ((Split-Path -Parent $Destination) -eq $script:moveRepository) {
+                    if ((Split-Path -Parent $Destination) -eq $script:moveConfiguration) {
                         $script:forwardMoves++
                         if ($script:forwardMoves -eq 2) {
                             if ($script:moveFault -eq 'partial migration') { throw 'Injected runtime migration failure.' }
@@ -155,7 +158,7 @@ try {
                     }
                     & $script:originalMove $Source $Destination
                 }
-            } $fault $f.Repo
+            } $fault $f.Configuration
         } elseif ($fault -eq 'creation') {
             & $f.Module { function script:New-Item { throw 'Injected junction creation failure.' } }
         } else {
@@ -168,7 +171,7 @@ try {
         Assert-RuntimeState $f $f.Local
         $raceDestination = if ($fault -eq 'destination race') { & $f.Module { $script:raceDestination } } else { $null }
         foreach ($name in $f.RuntimeContents.Keys) {
-            $destination = Join-Path $f.Repo $name
+            $destination = Join-Path $f.Configuration $name
             if ($destination -eq $raceDestination) {
                 Assert ((Get-Content -LiteralPath $destination -Raw).Trim() -eq 'concurrent-state') 'Rollback destroyed a concurrently created destination.'
             } else {
@@ -179,12 +182,12 @@ try {
     }
 
     $f = New-Fixture 'overlapping paths'
-    Assert-Throws { Connect-TerminalConfiguration $f.Repo (Join-Path $f.Repo 'LocalState') } 'must not contain'
+    Assert-Throws { Connect-TerminalConfiguration $f.Configuration (Join-Path $f.Configuration 'LocalState') } 'must not contain'
     Write-Host 'Overlapping source and destination are rejected: OK'
 
     foreach ($invalid in @('unknown-profile', 'hidden', 'elevated-defaults', 'elevated-profile', 'commandline', 'default-commandline', 'saved-layout', 'wrong-keybinding')) {
         $f = New-Fixture "invalid $invalid"
-        $path = Join-Path $f.Repo 'settings.json'
+        $path = Join-Path $f.Configuration 'settings.json'
         $settings = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable -Depth 100
         $profile = $settings.profiles.list | Where-Object guid -eq $settings.defaultProfile
         switch ($invalid) {
@@ -207,5 +210,5 @@ try {
     Get-ChildItem -LiteralPath $testRoot -Recurse -Directory -Force | Where-Object LinkType -eq 'Junction' |
         ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
     Remove-Item -LiteralPath $testRoot -Recurse -Force
-    Remove-Module TerminalConfiguration -ErrorAction SilentlyContinue
+    Remove-Module terminal-configuration -ErrorAction SilentlyContinue
 }

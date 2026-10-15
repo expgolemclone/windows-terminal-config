@@ -54,27 +54,27 @@ function Assert-TerminalSettings {
     }
 }
 
-function Test-ConfigurationJunction([string]$LocalState, [string]$RepositoryRoot) {
+function Test-ConfigurationJunction([string]$LocalState, [string]$ConfigurationDirectory) {
     $item = Get-Item -LiteralPath $LocalState -Force -ErrorAction SilentlyContinue
     return $null -ne $item -and $item.LinkType -eq 'Junction' -and
         [string]::Equals((Resolve-ConfigurationPath ([string]$item.Target)),
-            (Resolve-ConfigurationPath $RepositoryRoot), [StringComparison]::OrdinalIgnoreCase)
+            (Resolve-ConfigurationPath $ConfigurationDirectory), [StringComparison]::OrdinalIgnoreCase)
 }
 
 function Assert-TerminalInstallation {
     param(
-        [Parameter(Mandatory)][string]$RepositoryRoot,
+        [Parameter(Mandatory)][string]$ConfigurationDirectory,
         [Parameter(Mandatory)][string]$LocalState
     )
-    if (-not (Test-ConfigurationJunction $LocalState $RepositoryRoot)) {
-        throw "Windows Terminal LocalState is not connected to this repository: $LocalState -> $RepositoryRoot"
+    if (-not (Test-ConfigurationJunction $LocalState $ConfigurationDirectory)) {
+        throw "Windows Terminal LocalState is not connected to this configuration directory: $LocalState -> $ConfigurationDirectory"
     }
-    $source = Join-Path $RepositoryRoot 'settings.json'
+    $source = Join-Path $ConfigurationDirectory 'settings.json'
     $live = Join-Path $LocalState 'settings.json'
     Assert-TerminalSettings $source
     Assert-TerminalSettings $live
     if ((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $live).Hash) {
-        throw 'Live settings do not match the repository settings.'
+        throw 'Live settings do not match the configuration settings.'
     }
 }
 
@@ -87,26 +87,26 @@ function Get-TerminalProcesses {
 function Connect-TerminalConfiguration {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory)][string]$RepositoryRoot,
+        [Parameter(Mandatory)][string]$ConfigurationDirectory,
         [Parameter(Mandatory)][string]$LocalState,
         [switch]$WaitForTerminalExit
     )
-    $RepositoryRoot = Resolve-ConfigurationPath $RepositoryRoot
+    $ConfigurationDirectory = Resolve-ConfigurationPath $ConfigurationDirectory
     $LocalState = Resolve-ConfigurationPath $LocalState
     $packageRoot = Split-Path -Parent $LocalState
-    Assert-TerminalSettings (Join-Path $RepositoryRoot 'settings.json')
+    Assert-TerminalSettings (Join-Path $ConfigurationDirectory 'settings.json')
     if (-not (Test-Path -LiteralPath $packageRoot -PathType Container)) {
         throw "Windows Terminal package directory is missing: $packageRoot"
     }
-    if ($RepositoryRoot -eq $LocalState -or
-        $RepositoryRoot.StartsWith($LocalState + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
-        $LocalState.StartsWith($RepositoryRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-        throw 'Repository and LocalState paths must not contain one another.'
+    if ($ConfigurationDirectory -eq $LocalState -or
+        $ConfigurationDirectory.StartsWith($LocalState + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
+        $LocalState.StartsWith($ConfigurationDirectory + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Configuration and LocalState paths must not contain one another.'
     }
     # A valid installation needs no process shutdown, even with -WaitForTerminalExit.
-    if (Test-ConfigurationJunction $LocalState $RepositoryRoot) {
-        Assert-TerminalInstallation $RepositoryRoot $LocalState
-        return [pscustomobject]@{ Changed = $false; LocalState = $LocalState; RepositoryRoot = $RepositoryRoot; BackupPath = $null }
+    if (Test-ConfigurationJunction $LocalState $ConfigurationDirectory) {
+        Assert-TerminalInstallation $ConfigurationDirectory $LocalState
+        return [pscustomobject]@{ Changed = $false; LocalState = $LocalState; ConfigurationDirectory = $ConfigurationDirectory; BackupPath = $null }
     }
     $existingItem = Get-Item -LiteralPath $LocalState -Force -ErrorAction SilentlyContinue
     if ($null -ne $existingItem -and (
@@ -114,7 +114,7 @@ function Connect-TerminalConfiguration {
         ($existingItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
         throw "LocalState is not a regular directory and cannot be replaced: $LocalState"
     }
-    if (-not $PSCmdlet.ShouldProcess($LocalState, "Back up LocalState and connect it to $RepositoryRoot")) {
+    if (-not $PSCmdlet.ShouldProcess($LocalState, "Back up LocalState and connect it to $ConfigurationDirectory")) {
         return
     }
     if ($WaitForTerminalExit) {
@@ -124,9 +124,9 @@ function Connect-TerminalConfiguration {
         throw 'Close every Windows Terminal window, then retry from an independent PowerShell or Console Host window.'
     }
     # Recheck after waiting: another setup may have completed while Terminal was open.
-    if (Test-ConfigurationJunction $LocalState $RepositoryRoot) {
-        Assert-TerminalInstallation $RepositoryRoot $LocalState
-        return [pscustomobject]@{ Changed = $false; LocalState = $LocalState; RepositoryRoot = $RepositoryRoot; BackupPath = $null }
+    if (Test-ConfigurationJunction $LocalState $ConfigurationDirectory) {
+        Assert-TerminalInstallation $ConfigurationDirectory $LocalState
+        return [pscustomobject]@{ Changed = $false; LocalState = $LocalState; ConfigurationDirectory = $ConfigurationDirectory; BackupPath = $null }
     }
     $existingItem = Get-Item -LiteralPath $LocalState -Force -ErrorAction SilentlyContinue
     if ($null -ne $existingItem -and (
@@ -141,7 +141,7 @@ function Connect-TerminalConfiguration {
             $_.Name -in @('state.json', 'elevated-state.json') -or $_.Name -like 'buffer_*.txt'
         })
         foreach ($file in $runtimeFiles) {
-            $destination = Join-Path $RepositoryRoot $file.Name
+            $destination = Join-Path $ConfigurationDirectory $file.Name
             if (Test-Path -LiteralPath $destination) { throw "Runtime state already exists: $destination" }
         }
         $backupName = 'LocalState.backup-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
@@ -155,27 +155,27 @@ function Connect-TerminalConfiguration {
             Rename-Item -LiteralPath $LocalState -NewName $backupName
             $renamed = $true
             foreach ($file in $runtimeFiles) {
-                $destination = Join-Path $RepositoryRoot $file.Name
+                $destination = Join-Path $ConfigurationDirectory $file.Name
                 Move-TerminalRuntimeFile (Join-Path $backupPath $file.Name) $destination
                 $movedFiles.Add($file.Name)
             }
         }
-        New-Item -ItemType Junction -Path $LocalState -Target $RepositoryRoot | Out-Null
-        Assert-TerminalInstallation $RepositoryRoot $LocalState
+        New-Item -ItemType Junction -Path $LocalState -Target $ConfigurationDirectory | Out-Null
+        Assert-TerminalInstallation $ConfigurationDirectory $LocalState
     }
     catch {
-        if (Test-ConfigurationJunction $LocalState $RepositoryRoot) {
+        if (Test-ConfigurationJunction $LocalState $ConfigurationDirectory) {
             Remove-Item -LiteralPath $LocalState -Force
         }
         foreach ($name in $movedFiles) {
-            Move-TerminalRuntimeFile (Join-Path $RepositoryRoot $name) (Join-Path $backupPath $name)
+            Move-TerminalRuntimeFile (Join-Path $ConfigurationDirectory $name) (Join-Path $backupPath $name)
         }
         if ($renamed -and -not (Test-Path -LiteralPath $LocalState)) {
             Rename-Item -LiteralPath $backupPath -NewName (Split-Path -Leaf $LocalState)
         }
         throw
     }
-    return [pscustomobject]@{ Changed = $true; LocalState = $LocalState; RepositoryRoot = $RepositoryRoot; BackupPath = $backupPath }
+    return [pscustomobject]@{ Changed = $true; LocalState = $LocalState; ConfigurationDirectory = $ConfigurationDirectory; BackupPath = $backupPath }
 }
 
 Export-ModuleMember -Function Assert-TerminalSettings, Assert-TerminalInstallation, Connect-TerminalConfiguration
