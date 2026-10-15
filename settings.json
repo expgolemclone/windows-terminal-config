@@ -108,9 +108,9 @@
         {
             "background": "#000000",
             "black": "#000000",
-            "blue": "#7AFF01",
+            "blue": "#82AAFF",
             "brightBlack": "#FFFFFF",
-            "brightBlue": "#CC00FF",
+            "brightBlue": "#B4CEFF",
             "brightCyan": "#02FFE1",
             "brightGreen": "#00FF28",
             "brightPurple": "#CC00FF",
@@ -118,13 +118,13 @@
             "brightWhite": "#FFFFFF",
             "brightYellow": "#FFFC02",
             "cursorColor": "#FFFFFF",
-            "cyan": "#7AFF01",
+            "cyan": "#63D9D3",
             "foreground": "#FFFFFF",
             "green": "#00FF28",
             "name": "Soft Night",
             "purple": "#CC00FF",
             "red": "#F90076",
-            "selectionBackground": "#FF0063",
+            "selectionBackground": "#34404D",
             "white": "#FFFFFF",
             "yellow": "#FF7B02"
         }
