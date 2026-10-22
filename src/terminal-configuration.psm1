@@ -34,6 +34,16 @@ function Assert-TerminalSettings {
         $settings.profiles.defaults.ContainsKey('commandline')) {
         throw 'The default profile must be visible, non-elevated PowerShell selected by mise.exe exec -- pwsh, without a dynamic source or default commandline.'
     }
+    foreach ($profile in $settings.profiles.list) {
+        if ($profile.guid -eq '{61c54bbd-c2c6-5271-96e7-009a87ff44bf}' -and
+            ($profile.hidden -ne $true -or $profile.ContainsKey('commandline'))) {
+            throw 'The built-in Windows PowerShell profile must remain hidden without an explicit commandline.'
+        }
+        if ($profile.ContainsKey('commandline') -and $profile.commandline -match '(?i)(?:powershell|pwsh)(?:\.exe)?' -and
+            $profile.commandline -cne 'mise.exe exec -- pwsh') {
+            throw 'Every explicit PowerShell commandline must use mise.exe exec -- pwsh.'
+        }
+    }
     if ($settings.firstWindowPreference -ne 'defaultProfile' -or $settings.windowingBehavior -ne 'useNew') {
         throw 'Terminal must open new windows using the default profile, not saved layouts.'
     }

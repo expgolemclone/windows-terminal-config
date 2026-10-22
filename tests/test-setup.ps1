@@ -185,7 +185,7 @@ try {
     Assert-Throws { Connect-TerminalConfiguration $f.Configuration (Join-Path $f.Configuration 'LocalState') } 'must not contain'
     Write-Host 'Overlapping source and destination are rejected: OK'
 
-    foreach ($invalid in @('unknown-profile', 'hidden', 'elevated-defaults', 'elevated-profile', 'commandline', 'dynamic-source', 'hardcoded-commandline', 'system-powershell', 'missing-commandline', 'default-commandline', 'saved-layout', 'wrong-keybinding')) {
+    foreach ($invalid in @('unknown-profile', 'hidden', 'elevated-defaults', 'elevated-profile', 'commandline', 'dynamic-source', 'hardcoded-commandline', 'system-powershell', 'missing-commandline', 'default-commandline', 'legacy-commandline', 'visible-legacy-profile', 'secondary-hardcoded-powershell', 'saved-layout', 'wrong-keybinding')) {
         $f = New-Fixture "invalid $invalid"
         $path = Join-Path $f.Configuration 'settings.json'
         $settings = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable -Depth 100
@@ -201,11 +201,14 @@ try {
             'system-powershell' { $profile.commandline = 'powershell.exe' }
             'missing-commandline' { $profile.Remove('commandline') | Out-Null }
             'default-commandline' { $settings.profiles.defaults.commandline = 'pwsh.exe' }
+            'legacy-commandline' { ($settings.profiles.list | Where-Object name -eq 'Windows PowerShell').commandline = 'powershell.exe' }
+            'visible-legacy-profile' { ($settings.profiles.list | Where-Object name -eq 'Windows PowerShell').hidden = $false }
+            'secondary-hardcoded-powershell' { $settings.profiles.list += @{ guid = '{00000000-0000-0000-0000-000000000000}'; commandline = 'C:\hardcoded\pwsh.exe' } }
             'saved-layout' { $settings.firstWindowPreference = 'persistedWindowLayout' }
             'wrong-keybinding' { ($settings.keybindings | Where-Object keys -eq 'ctrl+c').id = 'Terminal.CopyToClipboard' }
         }
         $settings | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $path
-        Assert-Throws { Connect $f } 'default profile|new windows|Unexpected binding'
+        Assert-Throws { Connect $f } 'default profile|new windows|Unexpected binding|Windows PowerShell profile|Every explicit PowerShell'
     }
     Write-Host 'Invalid source settings block installation: OK'
     Write-Host 'Windows Terminal setup regression tests: OK'
