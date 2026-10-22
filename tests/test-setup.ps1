@@ -185,7 +185,7 @@ try {
     Assert-Throws { Connect-TerminalConfiguration $f.Configuration (Join-Path $f.Configuration 'LocalState') } 'must not contain'
     Write-Host 'Overlapping source and destination are rejected: OK'
 
-    foreach ($invalid in @('unknown-profile', 'hidden', 'elevated-defaults', 'elevated-profile', 'commandline', 'default-commandline', 'saved-layout', 'wrong-keybinding')) {
+    foreach ($invalid in @('unknown-profile', 'hidden', 'elevated-defaults', 'elevated-profile', 'commandline', 'dynamic-source', 'hardcoded-commandline', 'system-powershell', 'missing-commandline', 'default-commandline', 'saved-layout', 'wrong-keybinding')) {
         $f = New-Fixture "invalid $invalid"
         $path = Join-Path $f.Configuration 'settings.json'
         $settings = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable -Depth 100
@@ -196,6 +196,10 @@ try {
             'elevated-defaults' { $settings.profiles.defaults.elevate = $true }
             'elevated-profile' { $profile.elevate = $true }
             'commandline' { $profile.commandline = 'pwsh.exe' }
+            'dynamic-source' { $profile.source = 'Windows.Terminal.PowershellCore' }
+            'hardcoded-commandline' { $profile.commandline = 'C:\hardcoded\pwsh.exe' }
+            'system-powershell' { $profile.commandline = 'powershell.exe' }
+            'missing-commandline' { $profile.Remove('commandline') | Out-Null }
             'default-commandline' { $settings.profiles.defaults.commandline = 'pwsh.exe' }
             'saved-layout' { $settings.firstWindowPreference = 'persistedWindowLayout' }
             'wrong-keybinding' { ($settings.keybindings | Where-Object keys -eq 'ctrl+c').id = 'Terminal.CopyToClipboard' }

@@ -27,11 +27,12 @@ function Assert-TerminalSettings {
     param([Parameter(Mandatory)][string]$SettingsPath)
     $settings = Get-Content -LiteralPath $SettingsPath -Raw | ConvertFrom-Json -AsHashtable -Depth 100
     $profiles = @($settings.profiles.list | Where-Object { $_.guid -eq $settings.defaultProfile })
-    if ($profiles.Count -ne 1 -or $profiles[0].source -ne 'Windows.Terminal.PowershellCore' -or
+    if ($profiles.Count -ne 1 -or $profiles[0].ContainsKey('source') -or
         $profiles[0].hidden -ne $false -or $profiles[0]['elevate'] -eq $true -or
-        $settings.profiles.defaults['elevate'] -eq $true -or $profiles[0].ContainsKey('commandline') -or
+        $settings.profiles.defaults['elevate'] -eq $true -or
+        $profiles[0]['commandline'] -cne 'mise.exe exec -- pwsh' -or
         $settings.profiles.defaults.ContainsKey('commandline')) {
-        throw 'The default profile must be the visible, non-elevated PowerShell 7 dynamic profile without a commandline override.'
+        throw 'The default profile must be visible, non-elevated PowerShell selected by mise.exe exec -- pwsh, without a dynamic source or default commandline.'
     }
     if ($settings.firstWindowPreference -ne 'defaultProfile' -or $settings.windowingBehavior -ne 'useNew') {
         throw 'Terminal must open new windows using the default profile, not saved layouts.'
