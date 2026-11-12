@@ -26,6 +26,9 @@ function Resolve-ConfigurationPath([string]$Path) {
 function Assert-TerminalSettings {
     param([Parameter(Mandatory)][string]$SettingsPath)
     $settings = Get-Content -LiteralPath $SettingsPath -Raw | ConvertFrom-Json -AsHashtable -Depth 100
+    if ($settings.ContainsKey('defaultInputScope')) {
+        throw 'Terminal must use the default input scope so Japanese IME composition remains available.'
+    }
     $profiles = @($settings.profiles.list | Where-Object { $_.guid -eq $settings.defaultProfile })
     if ($profiles.Count -ne 1 -or $profiles[0].ContainsKey('source') -or
         $profiles[0].hidden -ne $false -or $profiles[0]['elevate'] -eq $true -or
